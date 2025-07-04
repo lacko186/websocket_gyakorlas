@@ -1,60 +1,31 @@
-const express = require('express');
-const http = require('http');
 const WebSocket = require('ws');
-const app = express();
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
-const port = 5000;
+
+const wss = new WebSocket.Server({ port: 5000 });
 
 const uzenetek = [];
 
 wss.on('connection', (ws) => {
-    console.log('Kliens csatlakozott');
-    
+  console.log('Kliens csatlakozott');
   
-    ws.send(JSON.stringify({
-      tipus: 'elozo_uzenetek',
-      uzenetek: uzenetek
-    }));
+  // Küldjük el az összes üzenetet
+  ws.send(JSON.stringify(uzenetek));
+  
+  ws.on('message', (data) => {
+    const uzenet = data.toString();
+    uzenetek.push(uzenet);
     
-    ws.on('message', (data) => {
-      try {
-        const uzenet = JSON.parse(data);
-        
-        if (uzenet.tipus === 'uj_uzenet') {
-          const ujUzenet = {
-            id: Date.now(),
-            szoveg: uzenet.szoveg,
-            felhasznalo: uzenet.felhasznalo || 'Anonim'
-          };
-          
-       
-          uzenetek.push(ujUzenet);
-          
-          wss.clients.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify({
-                tipus: 'uj_uzenet',
-                uzenet: ujUzenet
-              }));
-            }
-          });
-          
-          console.log('Új üzenet:', ujUzenet.szoveg);
-        }
-      } catch (error) {
-        console.error('Hiba:', error);
-      }
+    // Küldjük mindenkinek
+    wss.clients.forEach((client) => {
+      client.send(JSON.stringify(uzenetek));
     });
     
-    ws.on('close', () => {
-      console.log('Kliens lecsatlakozott');
-    });
+    console.log('Új üzenet:', uzenet);
   });
   
-  
-  
-  server.listen(port, () => {
-    console.log(`Szerver fut a ${port}-es porton`);
+  ws.on('close', () => {
+    console.log('Kliens lecsatlakozott');
   });
+});
+
+console.log('Szerver fut a 5000-es porton');
   
